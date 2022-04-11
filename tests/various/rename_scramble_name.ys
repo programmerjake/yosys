@@ -1,0 +1,14 @@
+read_verilog <<EOF
+module top();
+wire a, b, c;
+endmodule
+EOF
+
+proc
+hierarchy -top top
+
+rename -scramble-name w:a
+select -assert-none w:a
+select -assert-count 1 w:$_270369_
+select -assert-none w:$_270369_ w:b w:c t:foo %% %n
+
