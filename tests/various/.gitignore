@@ -6,3 +6,5 @@
 /plugin.so
 /plugin.so.dSYM
 /temp
+/smtlib2_expr.smt2
+/smtlib2_expr.vcd

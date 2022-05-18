@@ -2591,3 +2591,24 @@ endmodule
 `endif
 
 // --------------------------------------------------------
+
+module \$smtlib2_expr (A, Y);
+
+parameter EXPR = "";
+parameter A_WIDTH = 0;
+parameter Y_WIDTH = 0;
+
+input [A_WIDTH-1:0] A;
+output [Y_WIDTH-1:0] Y;
+
+initial begin
+	// inside if to not break tests
+	if (EXPR != "") begin
+		$display("ERROR: $smtlib2_expr is non-simulatable!");
+		$finish;
+	end
+end
+
+endmodule
+
+// --------------------------------------------------------
