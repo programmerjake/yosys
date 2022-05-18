@@ -1605,6 +1605,14 @@ namespace {
 				return;
 			}
 
+			if (cell->type == ID($smtlib2_expr)) {
+				param(ID::EXPR);
+				port(ID::A, param(ID::A_WIDTH));
+				port(ID::Y, param(ID::Y_WIDTH));
+				check_expected();
+				return;
+			}
+
 			if (cell->type.in(ID($assert), ID($assume), ID($live), ID($fair), ID($cover))) {
 				port(ID::A, 1);
 				port(ID::EN, 1);

@@ -436,6 +436,28 @@ struct Smt2Worker
 		recursive_cells.erase(cell);
 	}
 
+	void export_smtlib2_expr(RTLIL::Cell *cell)
+	{
+		RTLIL::SigSpec sig_a = cell->getPort(ID::A);
+		RTLIL::SigSpec sig_y = sigmap(cell->getPort(ID::Y));
+		string expr = cell->getParam(ID::EXPR).decode_string();
+
+		string a_bv = get_bv(sig_a);
+
+		if (verbose)
+			log("%*s-> import cell: %s\n", 2 + 2 * GetSize(recursive_cells), "", log_id(cell));
+
+		int expr_idcounter = idcounter++;
+
+		decls.push_back(stringf("(define-fun |%s#%d| ((A (_ BitVec %d))) (_ BitVec %d) ; %s\n  %s\n)\n", get_id(module), expr_idcounter,
+					GetSize(sig_a), GetSize(sig_y), log_signal(sig_y), expr.c_str()));
+		decls.push_back(stringf("(define-fun |%s#%d| ((state |%s_s|)) (_ BitVec %d) (|%s#%d| %s)) ; %s\n", get_id(module), idcounter,
+					get_id(module), GetSize(sig_y), get_id(module), expr_idcounter, a_bv.c_str(), log_signal(sig_y)));
+		register_bv(sig_y, idcounter++);
+
+		recursive_cells.erase(cell);
+	}
+
 	void export_bvop(RTLIL::Cell *cell, std::string expr, char type = 0)
 	{
 		RTLIL::SigSpec sig_a, sig_b;
@@ -690,6 +712,10 @@ struct Smt2Worker
 				register_bv(sig, idcounter++);
 				recursive_cells.erase(cell);
 				return;
+			}
+
+			if (cell->type == ID($smtlib2_expr)) {
+				return export_smtlib2_expr(cell);
 			}
 
 			// FIXME: $slice $concat

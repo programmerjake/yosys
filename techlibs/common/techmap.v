@@ -609,3 +609,12 @@ module _90_lut;
 endmodule
 `endif
 
+(* techmap_celltype = "$smtlib2_expr" *)
+module _90_smtlib2_expr (A, Y);
+	parameter EXPR = "";
+	parameter A_WIDTH = 0;
+	parameter Y_WIDTH = 0;
+
+	input [A_WIDTH-1:0] A;
+	output [Y_WIDTH-1:0] Y;
+endmodule

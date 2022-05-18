@@ -173,6 +173,7 @@ struct CellTypes
 		setup_stdcells_eval();
 
 		setup_type(ID($_TBUF_), {ID::A, ID::E}, {ID::Y}, true);
+		setup_type(ID($smtlib2_expr), {ID::A}, {ID::Y});
 	}
 
 	void setup_stdcells_eval()
