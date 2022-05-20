@@ -434,6 +434,8 @@ class SmtIo:
 
             elif len(s) >= 4 and s[0] == "define-fun":
                 for arg_name, arg_sort in s[2]:
+                    if isinstance(arg_sort, list):
+                        break
                     if arg_sort in self.unroll_sorts:
                         self.unroll_decls[s[1]] = s
                         return
