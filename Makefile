@@ -129,12 +129,12 @@ LDFLAGS += -rdynamic
 LDLIBS += -lrt
 endif
 
-YOSYS_VER := 0.17
-GIT_REV := $(shell git -C $(YOSYS_SRC) rev-parse --short HEAD 2> /dev/null || echo UNKNOWN)
+YOSYS_VER := 0.17+41
+GIT_REV := $(shell git ls-remote $(YOSYS_SRC) HEAD -q | $(AWK) 'BEGIN {R = "UNKNOWN"}; ($$2 == "HEAD") {R = substr($$1, 1, 9); exit} END {print R}')
 OBJS = kernel/version_$(GIT_REV).o
 
 bumpversion:
-#	sed -i "/^YOSYS_VER := / s/+[0-9][0-9]*$$/+`git log --oneline b63e0a0.. | wc -l`/;" Makefile
+	sed -i "/^YOSYS_VER := / s/+[0-9][0-9]*$$/+`git log --oneline 6f9602b.. | wc -l`/;" Makefile
 
 # set 'ABCREV = default' to use abc/ as it is
 #
@@ -808,6 +808,7 @@ test: $(TARGETS) $(EXTRA_TARGETS)
 	+cd tests/fsm && bash run-test.sh $(SEEDOPT)
 	+cd tests/techmap && bash run-test.sh
 	+cd tests/memories && bash run-test.sh $(ABCOPT) $(SEEDOPT)
+	+cd tests/memlib && bash run-test.sh $(SEEDOPT)
 	+cd tests/bram && bash run-test.sh $(SEEDOPT)
 	+cd tests/various && bash run-test.sh
 	+cd tests/select && bash run-test.sh
