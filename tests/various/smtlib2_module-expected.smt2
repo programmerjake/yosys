@@ -48,15 +48,15 @@
 (declare-fun |uut#4| (|uut_s|) (_ BitVec 8)) ; \b
 (define-fun |uut#5| ((state |uut_s|)) (_ BitVec 8) (bvadd (|uut#3| state) (|uut#4| state))) ; \add2
 (define-fun |uut#6| ((state |uut_s|)) Bool (= (|uut#0| state) (|uut#5| state))) ; $0$formal$smtlib2_module.v:28$1_CHECK[0:0]$9
-; yosys-smt2-assert 0 $assert$smtlib2_module.v:28$19 smtlib2_module.v:28.17-29.22
+; yosys-smt2-assert 0 smtlib2_module.v:28.17-29.22
 (define-fun |uut_a 0| ((state |uut_s|)) Bool (or (|uut#6| state) (not true))) ; $assert$smtlib2_module.v:28$19
 (define-fun |uut#7| ((state |uut_s|)) (_ BitVec 8) (bvsub (|uut#3| state) (|uut#4| state))) ; \sub2
 (define-fun |uut#8| ((state |uut_s|)) Bool (= (|uut#2| state) (|uut#7| state))) ; $0$formal$smtlib2_module.v:29$2_CHECK[0:0]$11
-; yosys-smt2-assert 1 $assert$smtlib2_module.v:29$20 smtlib2_module.v:29.23-30.22
+; yosys-smt2-assert 1 smtlib2_module.v:29.23-30.22
 (define-fun |uut_a 1| ((state |uut_s|)) Bool (or (|uut#8| state) (not true))) ; $assert$smtlib2_module.v:29$20
 (define-fun |uut#9| ((state |uut_s|)) Bool (= (|uut#3| state) (|uut#4| state))) ; $eq$smtlib2_module.v:31$17_Y
 (define-fun |uut#10| ((state |uut_s|)) Bool (= (ite (|uut#1| state) #b1 #b0) (ite (|uut#9| state) #b1 #b0))) ; $0$formal$smtlib2_module.v:30$3_CHECK[0:0]$13
-; yosys-smt2-assert 2 $assert$smtlib2_module.v:30$21 smtlib2_module.v:30.23-31.25
+; yosys-smt2-assert 2 smtlib2_module.v:30.23-31.25
 (define-fun |uut_a 2| ((state |uut_s|)) Bool (or (|uut#10| state) (not true))) ; $assert$smtlib2_module.v:30$21
 (define-fun |uut_a| ((state |uut_s|)) Bool (and
   (|uut_a 0| state)
