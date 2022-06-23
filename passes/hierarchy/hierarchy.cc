@@ -18,16 +18,15 @@
  *
  */
 
-#include "kernel/yosys.h"
 #include "frontends/verific/verific.h"
-#include <stdlib.h>
-#include <stdio.h>
+#include "kernel/yosys.h"
 #include <set>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
-#  include <unistd.h>
+#include <unistd.h>
 #endif
-
 
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
@@ -43,35 +42,33 @@ void generate(RTLIL::Design *design, const std::vector<std::string> &celltypes, 
 	std::set<RTLIL::IdString> found_celltypes;
 
 	for (auto mod : design->modules())
-	for (auto cell : mod->cells())
-	{
-		if (design->module(cell->type) != nullptr)
-			continue;
-		if (cell->type.begins_with("$__"))
-			continue;
-		for (auto &pattern : celltypes)
-			if (patmatch(pattern.c_str(), RTLIL::unescape_id(cell->type).c_str()))
-				found_celltypes.insert(cell->type);
-	}
+		for (auto cell : mod->cells()) {
+			if (design->module(cell->type) != nullptr)
+				continue;
+			if (cell->type.begins_with("$__"))
+				continue;
+			for (auto &pattern : celltypes)
+				if (patmatch(pattern.c_str(), RTLIL::unescape_id(cell->type).c_str()))
+					found_celltypes.insert(cell->type);
+		}
 
-	for (auto &celltype : found_celltypes)
-	{
+	for (auto &celltype : found_celltypes) {
 		std::set<RTLIL::IdString> portnames;
 		std::set<RTLIL::IdString> parameters;
 		std::map<RTLIL::IdString, int> portwidths;
 		log("Generate module for cell type %s:\n", celltype.c_str());
 
 		for (auto mod : design->modules())
-		for (auto cell : mod->cells())
-			if (cell->type == celltype) {
-				for (auto &conn : cell->connections()) {
-					if (conn.first[0] != '$')
-						portnames.insert(conn.first);
-					portwidths[conn.first] = max(portwidths[conn.first], conn.second.size());
+			for (auto cell : mod->cells())
+				if (cell->type == celltype) {
+					for (auto &conn : cell->connections()) {
+						if (conn.first[0] != '$')
+							portnames.insert(conn.first);
+						portwidths[conn.first] = max(portwidths[conn.first], conn.second.size());
+					}
+					for (auto &para : cell->parameters)
+						parameters.insert(para.first);
 				}
-				for (auto &para : cell->parameters)
-					parameters.insert(para.first);
-			}
 
 		for (auto &decl : portdecls)
 			if (decl.index > 0)
@@ -79,7 +76,7 @@ void generate(RTLIL::Design *design, const std::vector<std::string> &celltypes, 
 
 		std::set<int> indices;
 		for (int i = 0; i < int(portnames.size()); i++)
-			indices.insert(i+1);
+			indices.insert(i + 1);
 
 		std::vector<generate_port_decl_t> ports(portnames.size());
 
@@ -87,14 +84,15 @@ void generate(RTLIL::Design *design, const std::vector<std::string> &celltypes, 
 			if (decl.index > 0) {
 				portwidths[decl.portname] = max(portwidths[decl.portname], 1);
 				portwidths[decl.portname] = max(portwidths[decl.portname], portwidths[stringf("$%d", decl.index)]);
-				log("  port %d: %s [%d:0] %s\n", decl.index, decl.input ? decl.output ? "inout" : "input" : "output", portwidths[decl.portname]-1, RTLIL::id2cstr(decl.portname));
+				log("  port %d: %s [%d:0] %s\n", decl.index, decl.input ? decl.output ? "inout" : "input" : "output",
+				    portwidths[decl.portname] - 1, RTLIL::id2cstr(decl.portname));
 				if (indices.count(decl.index) > ports.size())
 					log_error("Port index (%d) exceeds number of found ports (%d).\n", decl.index, int(ports.size()));
 				if (indices.count(decl.index) == 0)
 					log_error("Conflict on port index %d.\n", decl.index);
 				indices.erase(decl.index);
 				portnames.erase(decl.portname);
-				ports[decl.index-1] = decl;
+				ports[decl.index - 1] = decl;
 			}
 
 		while (portnames.size() > 0) {
@@ -106,9 +104,10 @@ void generate(RTLIL::Design *design, const std::vector<std::string> &celltypes, 
 					d.index = *indices.begin();
 					log_assert(!indices.empty());
 					indices.erase(d.index);
-					ports[d.index-1] = d;
+					ports[d.index - 1] = d;
 					portwidths[d.portname] = max(portwidths[d.portname], 1);
-					log("  port %d: %s [%d:0] %s\n", d.index, d.input ? d.output ? "inout" : "input" : "output", portwidths[d.portname]-1, RTLIL::id2cstr(d.portname));
+					log("  port %d: %s [%d:0] %s\n", d.index, d.input ? d.output ? "inout" : "input" : "output",
+					    portwidths[d.portname] - 1, RTLIL::id2cstr(d.portname));
 					goto found_matching_decl;
 				}
 			log_error("Can't match port %s.\n", RTLIL::id2cstr(portname));
@@ -140,7 +139,8 @@ void generate(RTLIL::Design *design, const std::vector<std::string> &celltypes, 
 }
 
 // Return the "basic" type for an array item.
-std::string basic_cell_type(const std::string celltype, int pos[3] = nullptr) {
+std::string basic_cell_type(const std::string celltype, int pos[3] = nullptr)
+{
 	std::string basicType = celltype;
 	if (celltype.compare(0, strlen("$array:"), "$array:") == 0) {
 		int pos_idx = celltype.find_first_of(':');
@@ -157,30 +157,28 @@ std::string basic_cell_type(const std::string celltype, int pos[3] = nullptr) {
 }
 
 // A helper struct for expanding a module's interface connections in expand_module
-struct IFExpander
-{
-	IFExpander (RTLIL::Design &design, RTLIL::Module &m)
-		: module(m), has_interfaces_not_found(false)
+struct IFExpander {
+	IFExpander(RTLIL::Design &design, RTLIL::Module &m) : module(m), has_interfaces_not_found(false)
 	{
 		// Keep track of all derived interfaces available in the current
 		// module in 'interfaces_in_module':
 		for (auto cell : module.cells()) {
-			if(!cell->get_bool_attribute(ID::is_interface))
+			if (!cell->get_bool_attribute(ID::is_interface))
 				continue;
 
 			interfaces_in_module[cell->name] = design.module(cell->type);
 		}
 	}
 
-	RTLIL::Module                          &module;
-	dict<RTLIL::IdString, RTLIL::Module*>   interfaces_in_module;
+	RTLIL::Module &module;
+	dict<RTLIL::IdString, RTLIL::Module *> interfaces_in_module;
 
-	bool                                    has_interfaces_not_found;
-	std::vector<RTLIL::IdString>            connections_to_remove;
-	std::vector<RTLIL::IdString>            connections_to_add_name;
-	std::vector<RTLIL::SigSpec>             connections_to_add_signal;
-	dict<RTLIL::IdString, RTLIL::Module*>   interfaces_to_add_to_submodule;
-	dict<RTLIL::IdString, RTLIL::IdString>  modports_used_in_submodule;
+	bool has_interfaces_not_found;
+	std::vector<RTLIL::IdString> connections_to_remove;
+	std::vector<RTLIL::IdString> connections_to_add_name;
+	std::vector<RTLIL::SigSpec> connections_to_add_signal;
+	dict<RTLIL::IdString, RTLIL::Module *> interfaces_to_add_to_submodule;
+	dict<RTLIL::IdString, RTLIL::IdString> modports_used_in_submodule;
 
 	// Reset the per-cell state
 	void start_cell()
@@ -209,19 +207,16 @@ struct IFExpander
 		// module and the interface has still not been found. Warn
 		// about it and don't set has_interfaces_not_found (to avoid a
 		// loop).
-		log_warning("Could not find interface instance for `%s' in `%s'\n",
-			    log_id(interface_name), log_id(&module));
+		log_warning("Could not find interface instance for `%s' in `%s'\n", log_id(interface_name), log_id(&module));
 	}
 
 	// Handle an interface connection from the module
-	void on_interface(RTLIL::Module        &submodule,
-	                  RTLIL::IdString       conn_name,
-	                  const RTLIL::SigSpec &conn_signals)
+	void on_interface(RTLIL::Module &submodule, RTLIL::IdString conn_name, const RTLIL::SigSpec &conn_signals)
 	{
 		// Check if the connected wire is a potential interface in the parent module
 		std::string interface_name_str = conn_signals.bits()[0].wire->name.str();
 		// Strip the prefix '$dummywireforinterface' from the dummy wire to get the name
-		interface_name_str.replace(0,23,"");
+		interface_name_str.replace(0, 23, "");
 		interface_name_str = "\\" + interface_name_str;
 		RTLIL::IdString interface_name = interface_name_str;
 
@@ -236,12 +231,12 @@ struct IFExpander
 		// instances may either have the plain name or the name appended with
 		// '_inst_from_top_dummy'. Check for both of them here
 		int nexactmatch = interfaces_in_module.count(interface_name) > 0;
-		std::string interface_name_str2 =  interface_name_str + "_inst_from_top_dummy";
+		std::string interface_name_str2 = interface_name_str + "_inst_from_top_dummy";
 		RTLIL::IdString interface_name2 = interface_name_str2;
 		int nmatch2 = interfaces_in_module.count(interface_name2) > 0;
 
 		// If we can't find either name, this is a missing interface.
-		if (! (nexactmatch || nmatch2)) {
+		if (!(nexactmatch || nmatch2)) {
 			on_missing_interface(interface_name);
 			return;
 		}
@@ -256,11 +251,9 @@ struct IFExpander
 			std::string signal_name1 = conn_name.str() + "." + log_id(mod_wire->name);
 			std::string signal_name2 = interface_name.str() + "." + log_id(mod_wire);
 			connections_to_add_name.push_back(RTLIL::IdString(signal_name1));
-			if(module.wire(signal_name2) == nullptr) {
-				log_error("Could not find signal '%s' in '%s'\n",
-					  signal_name2.c_str(), log_id(module.name));
-			}
-			else {
+			if (module.wire(signal_name2) == nullptr) {
+				log_error("Could not find signal '%s' in '%s'\n", signal_name2.c_str(), log_id(module.name));
+			} else {
 				RTLIL::Wire *wire_in_parent = module.wire(signal_name2);
 				connections_to_add_signal.push_back(wire_in_parent);
 			}
@@ -279,9 +272,7 @@ struct IFExpander
 
 	// Handle a single connection from the module, making a note to expand
 	// it if it's an interface connection.
-	void on_connection(RTLIL::Module        &submodule,
-	                   RTLIL::IdString       conn_name,
-	                   const RTLIL::SigSpec &conn_signals)
+	void on_connection(RTLIL::Module &submodule, RTLIL::IdString conn_name, const RTLIL::SigSpec &conn_signals)
 	{
 		// Check if the connection is present as an interface in the sub-module's port list
 		const RTLIL::Wire *wire = submodule.wire(conn_name);
@@ -296,8 +287,7 @@ struct IFExpander
 
 	// Iterate over the connections in a cell, tracking any interface
 	// connections
-	void visit_connections(const RTLIL::Cell &cell,
-			       RTLIL::Module     &submodule)
+	void visit_connections(const RTLIL::Cell &cell, RTLIL::Module &submodule)
 	{
 		for (const auto &conn : cell.connections()) {
 			on_connection(submodule, conn.first, conn.second);
@@ -308,11 +298,11 @@ struct IFExpander
 	// interface port connection with the individual signal connections.
 	void rewrite_interface_connections(RTLIL::Cell &cell) const
 	{
-		for(unsigned int i=0;i<connections_to_add_name.size();i++) {
+		for (unsigned int i = 0; i < connections_to_add_name.size(); i++) {
 			cell.connections_[connections_to_add_name[i]] = connections_to_add_signal[i];
 		}
 		// Remove the connection for the interface itself:
-		for(unsigned int i=0;i<connections_to_remove.size();i++) {
+		for (unsigned int i = 0; i < connections_to_remove.size(); i++) {
 			cell.connections_.erase(connections_to_remove[i]);
 		}
 	}
@@ -325,11 +315,7 @@ struct IFExpander
 // message. Otherwise, return a pointer to the module if we derived or loaded
 // something. or null otherwise (the module should be blackbox or we couldn't
 // find it and check is not set).
-RTLIL::Module *get_module(RTLIL::Design                  &design,
-                          RTLIL::Cell                    &cell,
-                          RTLIL::Module                  &parent,
-                          bool                            check,
-                          const std::vector<std::string> &libdirs)
+RTLIL::Module *get_module(RTLIL::Design &design, RTLIL::Cell &cell, RTLIL::Module &parent, bool check, const std::vector<std::string> &libdirs)
 {
 	std::string cell_type = cell.type.str();
 	RTLIL::Module *abs_mod = design.module("$abstract" + cell_type);
@@ -347,12 +333,7 @@ RTLIL::Module *get_module(RTLIL::Design                  &design,
 		return nullptr;
 
 	for (auto &dir : libdirs) {
-		static const vector<pair<string, string>> extensions_list =
-			{
-			 {".v", "verilog"},
-			 {".sv", "verilog -sv"},
-			 {".il", "rtlil"}
-			};
+		static const vector<pair<string, string>> extensions_list = {{".v", "verilog"}, {".sv", "verilog -sv"}, {".il", "rtlil"}};
 
 		for (auto &ext : extensions_list) {
 			std::string filename = dir + "/" + RTLIL::unescape_id(cell.type) + ext.first;
@@ -362,16 +343,15 @@ RTLIL::Module *get_module(RTLIL::Design                  &design,
 			Frontend::frontend_call(&design, NULL, filename, ext.second);
 			RTLIL::Module *mod = design.module(cell.type);
 			if (!mod)
-				log_error("File `%s' from libdir does not declare module `%s'.\n",
-				          filename.c_str(), cell_type.c_str());
+				log_error("File `%s' from libdir does not declare module `%s'.\n", filename.c_str(), cell_type.c_str());
 			return mod;
 		}
 	}
 
 	// We couldn't find the module anywhere. Complain if check is set.
 	if (check)
-		log_error("Module `%s' referenced in module `%s' in cell `%s' is not part of the design.\n",
-		          cell_type.c_str(), parent.name.c_str(), cell.name.c_str());
+		log_error("Module `%s' referenced in module `%s' in cell `%s' is not part of the design.\n", cell_type.c_str(), parent.name.c_str(),
+			  cell.name.c_str());
 
 	return nullptr;
 }
@@ -404,52 +384,47 @@ void check_cell_connections(const RTLIL::Module &module, RTLIL::Cell &cell, RTLI
 		if (read_id_num(conn.first, &id)) {
 			if (id <= 0 || id > GetSize(mod.ports))
 				log_error("Module `%s' referenced in module `%s' in cell `%s' "
-				          "has only %d ports, requested port %d.\n",
-				          log_id(cell.type), log_id(&module), log_id(&cell),
-				          GetSize(mod.ports), id);
+					  "has only %d ports, requested port %d.\n",
+					  log_id(cell.type), log_id(&module), log_id(&cell), GetSize(mod.ports), id);
 			continue;
 		}
 
-		const RTLIL::Wire* wire = mod.wire(conn.first);
+		const RTLIL::Wire *wire = mod.wire(conn.first);
 		if (!wire || wire->port_id == 0) {
 			log_error("Module `%s' referenced in module `%s' in cell `%s' "
-			          "does not have a port named '%s'.\n",
-			          log_id(cell.type), log_id(&module), log_id(&cell),
-			          log_id(conn.first));
+				  "does not have a port named '%s'.\n",
+				  log_id(cell.type), log_id(&module), log_id(&cell), log_id(conn.first));
 		}
 	}
 	for (auto &param : cell.parameters) {
 		if (read_id_num(param.first, &id)) {
 			if (id <= 0 || id > GetSize(mod.avail_parameters))
 				log_error("Module `%s' referenced in module `%s' in cell `%s' "
-				          "has only %d parameters, requested parameter %d.\n",
-				          log_id(cell.type), log_id(&module), log_id(&cell),
-				          GetSize(mod.avail_parameters), id);
+					  "has only %d parameters, requested parameter %d.\n",
+					  log_id(cell.type), log_id(&module), log_id(&cell), GetSize(mod.avail_parameters), id);
 			continue;
 		}
 
-		if (mod.avail_parameters.count(param.first) == 0 &&
-		    param.first[0] != '$' &&
-		    strchr(param.first.c_str(), '.') == NULL) {
+		if (mod.avail_parameters.count(param.first) == 0 && param.first[0] != '$' && strchr(param.first.c_str(), '.') == NULL) {
 			log_error("Module `%s' referenced in module `%s' in cell `%s' "
-			          "does not have a parameter named '%s'.\n",
-			          log_id(cell.type), log_id(&module), log_id(&cell),
-			          log_id(param.first));
+				  "does not have a parameter named '%s'.\n",
+				  log_id(cell.type), log_id(&module), log_id(&cell), log_id(param.first));
 		}
 	}
 }
 
-bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check, bool flag_simcheck, std::vector<std::string> &libdirs)
+bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check, bool flag_simcheck, bool flag_smtcheck,
+		   std::vector<std::string> &libdirs)
 {
 	bool did_something = false;
-	std::map<RTLIL::Cell*, std::pair<int, int>> array_cells;
+	std::map<RTLIL::Cell *, std::pair<int, int>> array_cells;
 	std::string filename;
 
 	bool has_interface_ports = false;
 
 	// If any of the ports are actually interface ports, we will always need to
 	// reprocess the module:
-	if(!module->get_bool_attribute(ID::interfaces_replaced_in_module)) {
+	if (!module->get_bool_attribute(ID::interfaces_replaced_in_module)) {
 		for (auto wire : module->wires()) {
 			if ((wire->port_input || wire->port_output) && wire->get_bool_attribute(ID::is_interface))
 				has_interface_ports = true;
@@ -458,8 +433,7 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 
 	IFExpander if_expander(*design, *module);
 
-	for (auto cell : module->cells())
-	{
+	for (auto cell : module->cells()) {
 		if_expander.start_cell();
 
 		if (cell->type.begins_with("$array:")) {
@@ -475,9 +449,8 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 		}
 
 		RTLIL::Module *mod = design->module(cell->type);
-		if (!mod)
-		{
-			mod = get_module(*design, *cell, *module, flag_check || flag_simcheck, libdirs);
+		if (!mod) {
+			mod = get_module(*design, *cell, *module, flag_check || flag_simcheck || flag_smtcheck, libdirs);
 
 			// If we still don't have a module, treat the cell as a black box and skip
 			// it. Otherwise, we either loaded or derived something so should set the
@@ -495,18 +468,18 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 		// interfaces.
 		if_expander.visit_connections(*cell, *mod);
 
-		if (flag_check || flag_simcheck)
+		if (flag_check || flag_simcheck || flag_smtcheck)
 			check_cell_connections(*module, *cell, *mod);
 
 		if (mod->get_blackbox_attribute()) {
-			if (flag_simcheck)
-				log_error("Module `%s' referenced in module `%s' in cell `%s' is a blackbox/whitebox module.\n",
-						cell->type.c_str(), module->name.c_str(), cell->name.c_str());
+			if (flag_simcheck || (flag_smtcheck && !mod->get_bool_attribute(ID::smtlib2_module)))
+				log_error("Module `%s' referenced in module `%s' in cell `%s' is a blackbox/whitebox module.\n", cell->type.c_str(),
+					  module->name.c_str(), cell->name.c_str());
 			continue;
 		}
 
 		// If interface instances not yet found, skip cell for now, and say we did something, so that we will return back here:
-		if(if_expander.has_interfaces_not_found) {
+		if (if_expander.has_interfaces_not_found) {
 			did_something = true; // waiting for interfaces to be handled
 			continue;
 		}
@@ -516,8 +489,7 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 		// If there are no overridden parameters AND not interfaces, then we can use the existing module instance as the type
 		// for the cell:
 		if (cell->parameters.size() == 0 &&
-		    (if_expander.interfaces_to_add_to_submodule.size() == 0 ||
-		     !(cell->get_bool_attribute(ID::module_not_derived)))) {
+		    (if_expander.interfaces_to_add_to_submodule.size() == 0 || !(cell->get_bool_attribute(ID::module_not_derived)))) {
 			// If the cell being processed is an the interface instance itself, go down to "handle_interface_instance:",
 			// so that the signals of the interface are added to the parent module.
 			if (mod->get_bool_attribute(ID::is_interface)) {
@@ -526,31 +498,29 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 			continue;
 		}
 
-		cell->type = mod->derive(design,
-					 cell->parameters,
-					 if_expander.interfaces_to_add_to_submodule,
-					 if_expander.modports_used_in_submodule);
+		cell->type =
+		  mod->derive(design, cell->parameters, if_expander.interfaces_to_add_to_submodule, if_expander.modports_used_in_submodule);
 		cell->parameters.clear();
 		did_something = true;
 
-		handle_interface_instance:
+	handle_interface_instance:
 
-			// We add all the signals of the interface explicitly to the parent module. This is always needed when we encounter
-			// an interface instance:
-			if (mod->get_bool_attribute(ID::is_interface) && cell->get_bool_attribute(ID::module_not_derived)) {
-				cell->set_bool_attribute(ID::is_interface);
-				RTLIL::Module *derived_module = design->module(cell->type);
-				if_expander.interfaces_in_module[cell->name] = derived_module;
-				did_something = true;
-			}
-		// We clear 'module_not_derived' such that we will not rederive the cell again (needed when there are interfaces connected to the cell)
+		// We add all the signals of the interface explicitly to the parent module. This is always needed when we encounter
+		// an interface instance:
+		if (mod->get_bool_attribute(ID::is_interface) && cell->get_bool_attribute(ID::module_not_derived)) {
+			cell->set_bool_attribute(ID::is_interface);
+			RTLIL::Module *derived_module = design->module(cell->type);
+			if_expander.interfaces_in_module[cell->name] = derived_module;
+			did_something = true;
+		}
+		// We clear 'module_not_derived' such that we will not rederive the cell again (needed when there are interfaces connected to the
+		// cell)
 		cell->attributes.erase(ID::module_not_derived);
 	}
 	// Clear the attribute 'cells_not_processed' such that it can be known that we
 	// have been through all cells at least once, and that we can know whether
 	// to flag an error because of interface instances not found:
 	module->attributes.erase(ID::cells_not_processed);
-
 
 	// If any interface instances or interface ports were found in the module, we need to rederive it completely:
 	if ((if_expander.interfaces_in_module.size() > 0 || has_interface_ports) && !module->get_bool_attribute(ID::interfaces_replaced_in_module)) {
@@ -563,13 +533,13 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 	if (module->reprocess_if_necessary(design))
 		return true;
 
-	for (auto &it : array_cells)
-	{
+	for (auto &it : array_cells) {
 		RTLIL::Cell *cell = it.first;
 		int idx = it.second.first, num = it.second.second;
 
 		if (design->module(cell->type) == nullptr)
-			log_error("Array cell `%s.%s' of unknown type `%s'.\n", RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
+			log_error("Array cell `%s.%s' of unknown type `%s'.\n", RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name),
+				  RTLIL::id2cstr(cell->type));
 
 		RTLIL::Module *mod = design->module(cell->type);
 
@@ -585,20 +555,22 @@ bool expand_module(RTLIL::Design *design, RTLIL::Module *module, bool flag_check
 					}
 			}
 			if (mod->wire(portname) == nullptr)
-				log_error("Array cell `%s.%s' connects to unknown port `%s'.\n", RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(conn.first));
+				log_error("Array cell `%s.%s' connects to unknown port `%s'.\n", RTLIL::id2cstr(module->name),
+					  RTLIL::id2cstr(cell->name), RTLIL::id2cstr(conn.first));
 			int port_size = mod->wire(portname)->width;
 			if (conn_size == port_size || conn_size == 0)
 				continue;
-			if (conn_size != port_size*num)
-				log_error("Array cell `%s.%s' has invalid port vs. signal size for port `%s'.\n", RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(conn.first));
-			conn.second = conn.second.extract(port_size*idx, port_size);
+			if (conn_size != port_size * num)
+				log_error("Array cell `%s.%s' has invalid port vs. signal size for port `%s'.\n", RTLIL::id2cstr(module->name),
+					  RTLIL::id2cstr(cell->name), RTLIL::id2cstr(conn.first));
+			conn.second = conn.second.extract(port_size * idx, port_size);
 		}
 	}
 
 	return did_something;
 }
 
-void hierarchy_worker(RTLIL::Design *design, std::set<RTLIL::Module*, IdString::compare_ptr_by_name<Module>> &used, RTLIL::Module *mod, int indent)
+void hierarchy_worker(RTLIL::Design *design, std::set<RTLIL::Module *, IdString::compare_ptr_by_name<Module>> &used, RTLIL::Module *mod, int indent)
 {
 	if (used.count(mod) > 0)
 		return;
@@ -614,24 +586,24 @@ void hierarchy_worker(RTLIL::Design *design, std::set<RTLIL::Module*, IdString::
 		if (celltype.compare(0, strlen("$array:"), "$array:") == 0)
 			celltype = basic_cell_type(celltype);
 		if (design->module(celltype))
-			hierarchy_worker(design, used, design->module(celltype), indent+4);
+			hierarchy_worker(design, used, design->module(celltype), indent + 4);
 	}
 }
 
 void hierarchy_clean(RTLIL::Design *design, RTLIL::Module *top, bool purge_lib)
 {
-	std::set<RTLIL::Module*, IdString::compare_ptr_by_name<Module>> used;
+	std::set<RTLIL::Module *, IdString::compare_ptr_by_name<Module>> used;
 	hierarchy_worker(design, used, top, 0);
 
-	std::vector<RTLIL::Module*> del_modules;
+	std::vector<RTLIL::Module *> del_modules;
 	for (auto mod : design->modules())
 		if (used.count(mod) == 0)
 			del_modules.push_back(mod);
 		else {
 			// Now all interface ports must have been exploded, and it is hence
 			// safe to delete all of the remaining dummy interface ports:
-			pool<RTLIL::Wire*> del_wires;
-			for(auto wire : mod->wires()) {
+			pool<RTLIL::Wire *> del_wires;
+			for (auto wire : mod->wires()) {
 				if ((wire->port_input || wire->port_output) && wire->get_bool_attribute(ID::is_interface)) {
 					del_wires.insert(wire);
 				}
@@ -654,7 +626,7 @@ void hierarchy_clean(RTLIL::Design *design, RTLIL::Module *top, bool purge_lib)
 	log("Removed %d unused modules.\n", del_counter);
 }
 
-bool set_keep_assert(std::map<RTLIL::Module*, bool> &cache, RTLIL::Module *mod)
+bool set_keep_assert(std::map<RTLIL::Module *, bool> &cache, RTLIL::Module *mod)
 {
 	if (cache.count(mod) == 0)
 		for (auto c : mod->cells()) {
@@ -665,7 +637,7 @@ bool set_keep_assert(std::map<RTLIL::Module*, bool> &cache, RTLIL::Module *mod)
 	return cache[mod];
 }
 
-int find_top_mod_score(Design *design, Module *module, dict<Module*, int> &db)
+int find_top_mod_score(Design *design, Module *module, dict<Module *, int> &db)
 {
 	if (db.count(module) == 0) {
 		int score = 0;
@@ -689,7 +661,7 @@ int find_top_mod_score(Design *design, Module *module, dict<Module*, int> &db)
 
 RTLIL::Module *check_if_top_has_changed(Design *design, Module *top_mod)
 {
-	if(top_mod != NULL && top_mod->get_bool_attribute(ID::initial_top))
+	if (top_mod != NULL && top_mod->get_bool_attribute(ID::initial_top))
 		return top_mod;
 	else {
 		for (auto mod : design->modules()) {
@@ -702,12 +674,12 @@ RTLIL::Module *check_if_top_has_changed(Design *design, Module *top_mod)
 }
 
 // Find a matching wire for an implicit port connection; traversing generate block scope
-RTLIL::Wire *find_implicit_port_wire(Module *module, Cell *cell, const std::string& port)
+RTLIL::Wire *find_implicit_port_wire(Module *module, Cell *cell, const std::string &port)
 {
 	const std::string &cellname = cell->name.str();
 	size_t idx = cellname.size();
-	while ((idx = cellname.find_last_of('.', idx-1)) != std::string::npos) {
-		Wire *found = module->wire(cellname.substr(0, idx+1) + port.substr(1));
+	while ((idx = cellname.find_last_of('.', idx - 1)) != std::string::npos) {
+		Wire *found = module->wire(cellname.substr(0, idx + 1) + port.substr(1));
 		if (found != nullptr)
 			return found;
 	}
@@ -715,7 +687,7 @@ RTLIL::Wire *find_implicit_port_wire(Module *module, Cell *cell, const std::stri
 }
 
 struct HierarchyPass : public Pass {
-	HierarchyPass() : Pass("hierarchy", "check, expand and clean up design hierarchy") { }
+	HierarchyPass() : Pass("hierarchy", "check, expand and clean up design hierarchy") {}
 	void help() override
 	{
 		//   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
@@ -736,6 +708,9 @@ struct HierarchyPass : public Pass {
 		log("    -simcheck\n");
 		log("        like -check, but also throw an error if blackbox modules are\n");
 		log("        instantiated, and throw an error if the design has no top module.\n");
+		log("\n");
+		log("    -smtcheck\n");
+		log("        like -simcheck, but allow smtlib2_module modules.\n");
 		log("\n");
 		log("    -purge_lib\n");
 		log("        by default the hierarchy command will not remove library (blackbox)\n");
@@ -803,6 +778,7 @@ struct HierarchyPass : public Pass {
 
 		bool flag_check = false;
 		bool flag_simcheck = false;
+		bool flag_smtcheck = false;
 		bool purge_lib = false;
 		RTLIL::Module *top_mod = NULL;
 		std::string load_top_mod;
@@ -819,9 +795,8 @@ struct HierarchyPass : public Pass {
 		std::map<std::string, std::string> parameters;
 
 		size_t argidx;
-		for (argidx = 1; argidx < args.size(); argidx++)
-		{
-			if (args[argidx] == "-generate" && !flag_check && !flag_simcheck && !top_mod) {
+		for (argidx = 1; argidx < args.size(); argidx++) {
+			if (args[argidx] == "-generate" && !flag_check && !flag_simcheck && !flag_smtcheck && !top_mod) {
 				generate_mode = true;
 				log("Entering generate mode.\n");
 				while (++argidx < args.size()) {
@@ -868,6 +843,10 @@ struct HierarchyPass : public Pass {
 				flag_simcheck = true;
 				continue;
 			}
+			if (args[argidx] == "-smtcheck") {
+				flag_smtcheck = true;
+				continue;
+			}
 			if (args[argidx] == "-purge_lib") {
 				purge_lib = true;
 				continue;
@@ -888,7 +867,7 @@ struct HierarchyPass : public Pass {
 				nokeep_asserts = true;
 				continue;
 			}
-			if (args[argidx] == "-libdir" && argidx+1 < args.size()) {
+			if (args[argidx] == "-libdir" && argidx + 1 < args.size()) {
 				libdirs.push_back(args[++argidx]);
 				continue;
 			}
@@ -902,7 +881,7 @@ struct HierarchyPass : public Pass {
 				auto_top_mode = true;
 				continue;
 			}
-			if (args[argidx] == "-chparam"  && argidx+2 < args.size()) {
+			if (args[argidx] == "-chparam" && argidx + 2 < args.size()) {
 				const std::string &key = args[++argidx];
 				const std::string &value = args[++argidx];
 				auto r = parameters.emplace(key, value);
@@ -916,8 +895,7 @@ struct HierarchyPass : public Pass {
 		}
 		extra_args(args, argidx, design, false);
 
-		if (!load_top_mod.empty())
-		{
+		if (!load_top_mod.empty()) {
 			IdString top_name = RTLIL::escape_id(load_top_mod);
 			IdString abstract_id = "$abstract" + RTLIL::escape_id(load_top_mod);
 			top_mod = design->module(top_name);
@@ -1002,7 +980,7 @@ struct HierarchyPass : public Pass {
 
 		if (top_mod == nullptr && auto_top_mode) {
 			log_header(design, "Finding top of design hierarchy..\n");
-			dict<Module*, int> db;
+			dict<Module *, int> db;
 			for (Module *mod : design->selected_modules()) {
 				int score = find_top_mod_score(design, mod, db);
 				log("root of %3d design levels: %-20s\n", score, log_id(mod));
@@ -1013,7 +991,7 @@ struct HierarchyPass : public Pass {
 				log("Automatically selected %s as design top module.\n", log_id(top_mod));
 		}
 
-		if (flag_simcheck && top_mod == nullptr)
+		if ((flag_simcheck || flag_smtcheck) && top_mod == nullptr)
 			log_error("Design has no top module.\n");
 
 		if (top_mod != NULL) {
@@ -1025,11 +1003,10 @@ struct HierarchyPass : public Pass {
 		}
 
 		bool did_something = true;
-		while (did_something)
-		{
+		while (did_something) {
 			did_something = false;
 
-			std::set<RTLIL::Module*, IdString::compare_ptr_by_name<Module>> used_modules;
+			std::set<RTLIL::Module *, IdString::compare_ptr_by_name<Module>> used_modules;
 			if (top_mod != NULL) {
 				log_header(design, "Analyzing design hierarchy..\n");
 				hierarchy_worker(design, used_modules, top_mod, 0);
@@ -1039,15 +1016,14 @@ struct HierarchyPass : public Pass {
 			}
 
 			for (auto module : used_modules) {
-				if (expand_module(design, module, flag_check, flag_simcheck, libdirs))
+				if (expand_module(design, module, flag_check, flag_simcheck, flag_smtcheck, libdirs))
 					did_something = true;
 			}
-
 
 			// The top module might have changed if interface instances have been detected in it:
 			RTLIL::Module *tmp_top_mod = check_if_top_has_changed(design, top_mod);
 			if (tmp_top_mod != NULL) {
-				if (tmp_top_mod != top_mod){
+				if (tmp_top_mod != top_mod) {
 					top_mod = tmp_top_mod;
 					did_something = true;
 				}
@@ -1055,16 +1031,15 @@ struct HierarchyPass : public Pass {
 
 			// Delete modules marked as 'to_delete':
 			std::vector<RTLIL::Module *> modules_to_delete;
-			for(auto mod : design->modules()) {
+			for (auto mod : design->modules()) {
 				if (mod->get_bool_attribute(ID::to_delete)) {
 					modules_to_delete.push_back(mod);
 				}
 			}
-			for(size_t i=0; i<modules_to_delete.size(); i++) {
+			for (size_t i = 0; i < modules_to_delete.size(); i++) {
 				design->remove(modules_to_delete[i]);
 			}
 		}
-
 
 		if (top_mod != NULL) {
 			log_header(design, "Analyzing design hierarchy..\n");
@@ -1082,69 +1057,70 @@ struct HierarchyPass : public Pass {
 		}
 
 		if (!nokeep_asserts) {
-			std::map<RTLIL::Module*, bool> cache;
+			std::map<RTLIL::Module *, bool> cache;
 			for (auto mod : design->modules())
 				if (set_keep_assert(cache, mod)) {
-					log("Module %s directly or indirectly contains formal properties -> setting \"keep\" attribute.\n", log_id(mod));
+					log("Module %s directly or indirectly contains formal properties -> setting \"keep\" attribute.\n",
+					    log_id(mod));
 					mod->set_bool_attribute(ID::keep);
 				}
 		}
 
-		if (!keep_positionals)
-		{
-			std::set<RTLIL::Module*> pos_mods;
-			std::map<std::pair<RTLIL::Module*,int>, RTLIL::IdString> pos_map;
-			std::vector<std::pair<RTLIL::Module*,RTLIL::Cell*>> pos_work;
+		if (!keep_positionals) {
+			std::set<RTLIL::Module *> pos_mods;
+			std::map<std::pair<RTLIL::Module *, int>, RTLIL::IdString> pos_map;
+			std::vector<std::pair<RTLIL::Module *, RTLIL::Cell *>> pos_work;
 
 			for (auto mod : design->modules())
-			for (auto cell : mod->cells()) {
-				RTLIL::Module *cell_mod = design->module(cell->type);
-				if (cell_mod == nullptr)
-					continue;
-				for (auto &conn : cell->connections())
-					if (conn.first[0] == '$' && '0' <= conn.first[1] && conn.first[1] <= '9') {
-						pos_mods.insert(design->module(cell->type));
-						pos_work.push_back(std::pair<RTLIL::Module*,RTLIL::Cell*>(mod, cell));
-						break;
-					}
+				for (auto cell : mod->cells()) {
+					RTLIL::Module *cell_mod = design->module(cell->type);
+					if (cell_mod == nullptr)
+						continue;
+					for (auto &conn : cell->connections())
+						if (conn.first[0] == '$' && '0' <= conn.first[1] && conn.first[1] <= '9') {
+							pos_mods.insert(design->module(cell->type));
+							pos_work.push_back(std::pair<RTLIL::Module *, RTLIL::Cell *>(mod, cell));
+							break;
+						}
 
-				pool<std::pair<IdString, IdString>> params_rename;
-				for (const auto &p : cell->parameters) {
-					int id;
-					if (read_id_num(p.first, &id)) {
-						if (id <= 0 || id > GetSize(cell_mod->avail_parameters)) {
-							log("  Failed to map positional parameter %d of cell %s.%s (%s).\n",
-									id, RTLIL::id2cstr(mod->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
-						} else {
-							params_rename.insert(std::make_pair(p.first, cell_mod->avail_parameters[id - 1]));
+					pool<std::pair<IdString, IdString>> params_rename;
+					for (const auto &p : cell->parameters) {
+						int id;
+						if (read_id_num(p.first, &id)) {
+							if (id <= 0 || id > GetSize(cell_mod->avail_parameters)) {
+								log("  Failed to map positional parameter %d of cell %s.%s (%s).\n", id,
+								    RTLIL::id2cstr(mod->name), RTLIL::id2cstr(cell->name),
+								    RTLIL::id2cstr(cell->type));
+							} else {
+								params_rename.insert(std::make_pair(p.first, cell_mod->avail_parameters[id - 1]));
+							}
 						}
 					}
+					for (const auto &p : params_rename) {
+						cell->setParam(p.second, cell->getParam(p.first));
+						cell->unsetParam(p.first);
+					}
 				}
-				for (const auto &p : params_rename) {
-					cell->setParam(p.second, cell->getParam(p.first));
-					cell->unsetParam(p.first);
-				}
-			}
 
 			for (auto module : pos_mods)
-			for (auto wire : module->wires()) {
-				if (wire->port_id > 0)
-					pos_map[std::pair<RTLIL::Module*,int>(module, wire->port_id)] = wire->name;
-			}
+				for (auto wire : module->wires()) {
+					if (wire->port_id > 0)
+						pos_map[std::pair<RTLIL::Module *, int>(module, wire->port_id)] = wire->name;
+				}
 
 			for (auto &work : pos_work) {
 				RTLIL::Module *module = work.first;
 				RTLIL::Cell *cell = work.second;
-				log("Mapping positional arguments of cell %s.%s (%s).\n",
-						RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
+				log("Mapping positional arguments of cell %s.%s (%s).\n", RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name),
+				    RTLIL::id2cstr(cell->type));
 				dict<RTLIL::IdString, RTLIL::SigSpec> new_connections;
 				for (auto &conn : cell->connections()) {
 					int id;
 					if (read_id_num(conn.first, &id)) {
-						std::pair<RTLIL::Module*,int> key(design->module(cell->type), id);
+						std::pair<RTLIL::Module *, int> key(design->module(cell->type), id);
 						if (pos_map.count(key) == 0) {
-							log("  Failed to map positional argument %d of cell %s.%s (%s).\n",
-									id, RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
+							log("  Failed to map positional argument %d of cell %s.%s (%s).\n", id,
+							    RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
 							new_connections[conn.first] = conn.second;
 						} else
 							new_connections[pos_map.at(key)] = conn.second;
@@ -1157,28 +1133,25 @@ struct HierarchyPass : public Pass {
 
 		// Determine default values
 		dict<IdString, dict<IdString, Const>> defaults_db;
-		if (!nodefaults)
-		{
+		if (!nodefaults) {
 			for (auto module : design->modules())
 				for (auto wire : module->wires())
 					if (wire->port_input && wire->attributes.count(ID::defaultvalue))
 						defaults_db[module->name][wire->name] = wire->attributes.at(ID::defaultvalue);
 		}
 		// Process SV implicit wildcard port connections
-		std::set<Module*> blackbox_derivatives;
-		std::vector<Module*> design_modules = design->modules();
+		std::set<Module *> blackbox_derivatives;
+		std::vector<Module *> design_modules = design->modules();
 
-		for (auto module : design_modules)
-		{
-			for (auto cell : module->cells())
-			{
+		for (auto module : design_modules) {
+			for (auto cell : module->cells()) {
 				if (!cell->get_bool_attribute(ID::wildcard_port_conns))
 					continue;
 				Module *m = design->module(cell->type);
 
 				if (m == nullptr)
 					log_error("Cell %s.%s (%s) has implicit port connections but the module it instantiates is unknown.\n",
-							RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
+						  RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
 
 				// Need accurate port widths for error checking; so must derive blackboxes with dynamic port widths
 				if (m->get_blackbox_attribute() && !cell->parameters.empty() && m->get_bool_attribute(ID::dynports)) {
@@ -1199,30 +1172,31 @@ struct HierarchyPass : public Pass {
 					if (old_connections.count(wire->name))
 						continue;
 					// Make sure a wire of correct name exists in the parent
-					Wire* parent_wire = find_implicit_port_wire(module, cell, wire->name.str());
+					Wire *parent_wire = find_implicit_port_wire(module, cell, wire->name.str());
 
 					// Missing wires are OK when a default value is set
-					if (!nodefaults && parent_wire == nullptr && defaults_db.count(cell->type) && defaults_db.at(cell->type).count(wire->name))
+					if (!nodefaults && parent_wire == nullptr && defaults_db.count(cell->type) &&
+					    defaults_db.at(cell->type).count(wire->name))
 						continue;
 
 					if (parent_wire == nullptr)
 						log_error("No matching wire for implicit port connection `%s' of cell %s.%s (%s).\n",
-								RTLIL::id2cstr(wire->name), RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
+							  RTLIL::id2cstr(wire->name), RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name),
+							  RTLIL::id2cstr(cell->type));
 					if (parent_wire->width != wire->width)
-						log_error("Width mismatch between wire (%d bits) and port (%d bits) for implicit port connection `%s' of cell %s.%s (%s).\n",
-								parent_wire->width, wire->width,
-								RTLIL::id2cstr(wire->name), RTLIL::id2cstr(module->name), RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
+						log_error("Width mismatch between wire (%d bits) and port (%d bits) for implicit port connection "
+							  "`%s' of cell %s.%s (%s).\n",
+							  parent_wire->width, wire->width, RTLIL::id2cstr(wire->name), RTLIL::id2cstr(module->name),
+							  RTLIL::id2cstr(cell->name), RTLIL::id2cstr(cell->type));
 					cell->setPort(wire->name, parent_wire);
 				}
 				cell->attributes.erase(ID::wildcard_port_conns);
 			}
 		}
 
-		if (!nodefaults)
-		{
+		if (!nodefaults) {
 			for (auto module : design->modules())
-				for (auto cell : module->cells())
-				{
+				for (auto cell : module->cells()) {
 					if (defaults_db.count(cell->type) == 0)
 						continue;
 
@@ -1241,14 +1215,12 @@ struct HierarchyPass : public Pass {
 				}
 		}
 
-		for (auto module : design_modules)
-		{
-			pool<Wire*> wand_wor_index;
-			dict<Wire*, SigSpec> wand_map, wor_map;
+		for (auto module : design_modules) {
+			pool<Wire *> wand_wor_index;
+			dict<Wire *, SigSpec> wand_map, wor_map;
 			vector<SigSig> new_connections;
 
-			for (auto wire : module->wires())
-			{
+			for (auto wire : module->wires()) {
 				if (wire->get_bool_attribute(ID::wand)) {
 					wand_map[wire] = SigSpec();
 					wand_wor_index.insert(wire);
@@ -1259,13 +1231,11 @@ struct HierarchyPass : public Pass {
 				}
 			}
 
-			for (auto &conn : module->connections())
-			{
+			for (auto &conn : module->connections()) {
 				SigSig new_conn;
 				int cursor = 0;
 
-				for (auto c : conn.first.chunks())
-				{
+				for (auto c : conn.first.chunks()) {
 					Wire *w = c.wire;
 					SigSpec rhs = conn.second.extract(cursor, GetSize(c));
 
@@ -1289,21 +1259,18 @@ struct HierarchyPass : public Pass {
 			}
 			module->new_connections(new_connections);
 
-			for (auto cell : module->cells())
-			{
+			for (auto cell : module->cells()) {
 				if (!cell->known())
 					continue;
 
-				for (auto &conn : cell->connections())
-				{
+				for (auto &conn : cell->connections()) {
 					if (!cell->output(conn.first))
 						continue;
 
 					SigSpec new_sig;
 					bool update_port = false;
 
-					for (auto c : conn.second.chunks())
-					{
+					for (auto c : conn.second.chunks()) {
 						Wire *w = c.wire;
 
 						if (wand_wor_index.count(w) == 0) {
@@ -1331,8 +1298,7 @@ struct HierarchyPass : public Pass {
 				}
 			}
 
-			for (auto w : wand_wor_index)
-			{
+			for (auto w : wand_wor_index) {
 				bool wand = wand_map.count(w);
 				SigSpec sigs = wand ? wand_map.at(w) : wor_map.at(w);
 
@@ -1357,8 +1323,7 @@ struct HierarchyPass : public Pass {
 				module->connect(w, s);
 			}
 
-			for (auto cell : module->cells())
-			{
+			for (auto cell : module->cells()) {
 				Module *m = design->module(cell->type);
 
 				if (m == nullptr)
@@ -1374,8 +1339,7 @@ struct HierarchyPass : public Pass {
 					}
 				}
 
-				for (auto &conn : cell->connections())
-				{
+				for (auto &conn : cell->connections()) {
 					Wire *w = m->wire(conn.first);
 
 					if (w == nullptr || w->port_id == 0)
@@ -1386,21 +1350,16 @@ struct HierarchyPass : public Pass {
 
 					SigSpec sig = conn.second;
 
-					if (!keep_portwidths && GetSize(w) != GetSize(conn.second))
-					{
-						if (GetSize(w) < GetSize(conn.second))
-						{
+					if (!keep_portwidths && GetSize(w) != GetSize(conn.second)) {
+						if (GetSize(w) < GetSize(conn.second)) {
 							int n = GetSize(conn.second) - GetSize(w);
-							if (!w->port_input && w->port_output)
-							{
+							if (!w->port_input && w->port_output) {
 								RTLIL::SigSpec out = sig.extract(0, GetSize(w));
 								out.extend_u0(GetSize(sig), w->is_signed);
 								module->connect(sig.extract(GetSize(w), n), out.extract(GetSize(w), n));
 							}
 							sig.remove(GetSize(w), n);
-						}
-						else
-						{
+						} else {
 							int n = GetSize(w) - GetSize(conn.second);
 							if (w->port_input && !w->port_output)
 								sig.extend_u0(GetSize(w), sig.is_wire() && sig.as_wire()->is_signed);
@@ -1409,14 +1368,14 @@ struct HierarchyPass : public Pass {
 						}
 
 						if (!conn.second.is_fully_const() || !w->port_input || w->port_output)
-							log_warning("Resizing cell port %s.%s.%s from %d bits to %d bits.\n", log_id(module), log_id(cell),
-									log_id(conn.first), GetSize(conn.second), GetSize(sig));
+							log_warning("Resizing cell port %s.%s.%s from %d bits to %d bits.\n", log_id(module),
+								    log_id(cell), log_id(conn.first), GetSize(conn.second), GetSize(sig));
 						cell->setPort(conn.first, sig);
 					}
 
 					if (w->port_output && !w->port_input && sig.has_const())
-						log_error("Output port %s.%s.%s (%s) is connected to constants: %s\n",
-								log_id(module), log_id(cell), log_id(conn.first), log_id(cell->type), log_signal(sig));
+						log_error("Output port %s.%s.%s (%s) is connected to constants: %s\n", log_id(module), log_id(cell),
+							  log_id(conn.first), log_id(cell->type), log_signal(sig));
 				}
 			}
 		}
